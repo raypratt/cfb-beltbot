@@ -15,7 +15,9 @@ class CommandHandler:
         if len(parts) == 0:
             return self.get_current_status()
 
-        subcommand = parts[0] if parts[0] not in config.COMMAND_TRIGGERS else (parts[1] if len(parts) > 1 else '')
+        # Determine if a trigger was used
+        trigger_used = parts[0] in config.COMMAND_TRIGGERS
+        subcommand = parts[0] if not trigger_used else (parts[1] if len(parts) > 1 else '')
 
         if subcommand == 'help':
             return self.get_help()
@@ -24,7 +26,11 @@ class CommandHandler:
         elif subcommand == 'stats':
             return self.get_stats()
         elif subcommand == 'history':
-            team_name = ' '.join(parts[1:]) if len(parts) > 1 else None
+            # Extract team name based on whether trigger was used
+            if trigger_used:
+                team_name = ' '.join(parts[2:]) if len(parts) > 2 else None
+            else:
+                team_name = ' '.join(parts[1:]) if len(parts) > 1 else None
             return self.get_team_history(team_name)
         else:
             return self.get_current_status()
@@ -64,12 +70,17 @@ class CommandHandler:
     def get_help(self) -> str:
         """Show available commands"""
         response = "🏆 **CFB Belt Bot Commands**\n\n"
+        response += "**Available Commands:**\n\n"
         response += "• `!beltbot` - Current belt status\n\n"
         response += "• `!beltbot next` - Next belt game\n\n"
         response += "• `!beltbot stats` - Overall belt statistics\n\n"
         response += "• `!beltbot history [team]` - Team's belt history\n\n"
         response += "• `!beltbot help` - This help message\n\n"
-        response += f"[Full tracker]({config.WEBSITE_URL})"
+        response += "---\n\n"
+        response += "**Need Help?**\n\n"
+        response += f"• Full Tracker: {config.WEBSITE_URL}\n\n"
+        response += "• Report bugs or data issues: [GitHub Issues](https://github.com/raypratt/cfb-beltbot/issues)\n\n"
+        response += "• Source code: [GitHub](https://github.com/raypratt/cfb-beltbot)"
         response += config.BOT_SIGNATURE
 
         return response
@@ -140,29 +151,14 @@ class CommandHandler:
         if not team_name:
             return "Please specify a team! Example: `!beltbot history Michigan`" + config.BOT_SIGNATURE
 
-        # Find team ID by name (fuzzy matching)
-        schools = self.fetcher.fetch_schools()
-        team_id = None
+        # Find team using the improved search with aliases
+        result = self.fetcher.find_team_by_name(team_name)
 
-        # Exact match first
-        for school_id, school_name in schools.items():
-            if school_name.lower() == team_name.lower():
-                team_id = school_id
-                break
-
-        # Partial match if no exact match
-        if not team_id:
-            for school_id, school_name in schools.items():
-                if team_name.lower() in school_name.lower():
-                    team_id = school_id
-                    team_name = school_name
-                    break
-
-        if not team_id:
+        if not result:
             return f"Couldn't find a team matching '{team_name}'. Try a different spelling!" + config.BOT_SIGNATURE
 
+        team_id, actual_team_name = result
         history = self.fetcher.get_team_belt_history(team_id)
-        actual_team_name = self.fetcher.get_school_name(team_id)
 
         if history['total_reigns'] == 0:
             return f"📊 **{actual_team_name} Belt History**\n\n{actual_team_name} has never held the belt... yet! 🏆" + config.BOT_SIGNATURE

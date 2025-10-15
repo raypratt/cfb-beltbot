@@ -33,7 +33,8 @@ BOT_SIGNATURE = (
     f"^(🏆 Rutgers started this | "
     f"[Tracker]({WEBSITE_URL}) | "
     f"[Source](https://github.com/raypratt/cfb-beltbot) | "
-    f"!beltbot help for commands)"
+    f"!beltbot help for commands)\n\n"
+    f"^(Found a bug or incorrect data? [Report it here](https://github.com/raypratt/cfb-beltbot/issues))"
 )
 
 # Posting schedule (Eastern Time)
